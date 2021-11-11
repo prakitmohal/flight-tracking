@@ -75,10 +75,13 @@ while(1):
         for x in range(entries):
             print (flightData[x])
    
-        # if a plane is within 2nm and under 10,000 feet we can hear it
-        if flightData[0][1] < 2 and flightData[0][2] < 10000:
+        # if a plane is within 1nm and under 10,000 feet we can hear it
+        if flightData[0][1] < 1 and flightData[0][2] < 10000:
             print ("Can you hear this plane: ",flightData[0][0])
             slackTest(slackLink,flightData[0][0])
+
+            # mute notifications so we're not hammered with them
+            time.sleep(105)
     
     time.sleep(15)
 
