@@ -1,4 +1,4 @@
-import os, requests, json, time, geopy.distance, sys, requests, base64
+import os, requests, json, time, geopy.distance, sys, requests, base64, datetime
 
 # slack test
 def slackTest(link,message):
@@ -69,7 +69,9 @@ while(1):
     if entries >= 1:
         
         flightData.sort(key = lambda x: x[1])
-        
+
+        print (datetime.datetime.fromtimestamp(data['now']).strftime('%Y-%m-%d %H:%M:%S'))
+
         for x in range(entries):
             print (flightData[x])
    
