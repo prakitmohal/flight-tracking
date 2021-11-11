@@ -1,4 +1,4 @@
-import os, requests, json, time, geopy.distance, sys, requests, base64, datetime
+import os, requests, json, time, geopy.distance, sys, requests, base64, datetime, re
 
 # slack test
 def slackTest(link,message):
@@ -37,6 +37,7 @@ link = config.readline().strip()
 lat = config.readline()
 lon = config.readline()
 slackLink = config.readline().strip()
+aviationStackKey = config.readline().strip()
 myCoords = (lat,lon)
 config.close()
 
@@ -76,9 +77,29 @@ while(1):
             print (flightData[x])
    
         # if a plane is within 1nm and under 10,000 feet we can hear it
-        if flightData[0][1] < 1 and flightData[0][2] < 10000:
-            print ("Can you hear this plane: ",flightData[0][0])
-            slackTest(slackLink,flightData[0][0])
+        if flightData[0][1] < 15 and flightData[0][2] < 100000:
+            
+            flightNum = flightData[0][0]
+            print ("Can you hear this plane: ",flightNum)
+
+            # determine if the flight is a registration code or flight number to lookup
+            # if it starts with N followed by a number assume it's a reg. Thanks Spirit Airlines 
+            if re.match('^N[0-9]',flightNum):
+                message = flightNum
+            else:
+                # This is a flight number lets look it up
+                params = {'access_key':aviationStackKey, 'flight_icao':flightNum}
+                aviationStackResult = requests.get('http://api.aviationstack.com/v1/flights',params)
+                response = aviationStackResult.json()
+          
+                for flight in response['data']:
+                    departure = flight['departure']['iata']
+                    arrival = flight['arrival']['iata']
+
+                message = flightNum + " " +  departure + " " + arrival
+                print (message) 
+
+            slackTest(slackLink,message)
 
             # mute notifications so we're not hammered with them
             time.sleep(105)
