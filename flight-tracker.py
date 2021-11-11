@@ -76,8 +76,8 @@ while(1):
         for x in range(entries):
             print (flightData[x])
    
-        # if a plane is within 1nm and under 10,000 feet we can hear it
-        if flightData[0][1] < 2 and flightData[0][2] < 10000:
+        # if a plane is within 1.5nm and under 10,000 feet we can hear it
+        if flightData[0][1] < 1.5 and flightData[0][2] < 10000:
             
             flightNum = flightData[0][0]
             print ("Can you hear this plane: ",flightNum)
@@ -91,13 +91,17 @@ while(1):
                 params = {'access_key':aviationStackKey, 'flight_icao':flightNum}
                 aviationStackResult = requests.get('http://api.aviationstack.com/v1/flights',params)
                 response = aviationStackResult.json()
-          
+         
+                departure = "?" 
+                arrival = "?" 
+                aircraft = "?" 
+                
                 for flight in response['data']:
                     departure = flight['departure']['iata']
                     arrival = flight['arrival']['iata']
+                    aircraft = flight['aircraft']['iata']
 
-                message = flightNum + " " +  departure + " " + arrival
-                print (message) 
+                message = flightNum + " " +  departure + " " + arrival + " " + aircraft 
 
             slackTest(slackLink,message)
 
