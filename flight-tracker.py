@@ -77,7 +77,7 @@ while(1):
             print (flightData[x])
    
         # if a plane is within 1nm and under 10,000 feet we can hear it
-        if flightData[0][1] < 15 and flightData[0][2] < 100000:
+        if flightData[0][1] < 2 and flightData[0][2] < 10000:
             
             flightNum = flightData[0][0]
             print ("Can you hear this plane: ",flightNum)
