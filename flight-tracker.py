@@ -61,8 +61,12 @@ while(1):
 
             dataCoords = (data['aircraft'][x]['lat'],data['aircraft'][x]['lon'])
             distance = round(geopy.distance.distance(myCoords,dataCoords).nm,1)
-            
-            flightData.append([flightNum,distance,data['aircraft'][x]['alt_baro']])
+
+            altitude = data['aircraft'][x]['alt_baro']
+
+            # only log if altitude < 15,000
+            if altitude < 15000:
+                flightData.append([flightNum,distance,altitude])
 
     # sort the list by distance
     entries = len(flightData)
@@ -76,8 +80,8 @@ while(1):
         for x in range(entries):
             print (flightData[x])
    
-        # if a plane is within 1.5nm and under 10,000 feet we can hear it
-        if flightData[0][1] < 1.5 and flightData[0][2] < 10000:
+        # if a plane is within 1.5nm we can hear it
+        if flightData[0][1] < 1.5:
             
             flightNum = flightData[0][0]
             print ("Can you hear this plane: ",flightNum)
@@ -94,14 +98,13 @@ while(1):
          
                 departure = "?" 
                 arrival = "?" 
-                aircraft = "?" 
                 
                 for flight in response['data']:
-                    departure = flight['departure']['iata']
-                    arrival = flight['arrival']['iata']
-                    aircraft = flight['aircraft']['iata']
+                    if 'departure' in flight:
+                        departure = flight['departure']['iata']
+                        arrival = flight['arrival']['iata']
 
-                message = flightNum + " " +  departure + " " + arrival + " " + aircraft 
+                message = flightNum + " " +  departure + " " + arrival 
 
             slackTest(slackLink,message)
 
