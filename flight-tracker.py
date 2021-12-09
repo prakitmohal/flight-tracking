@@ -37,7 +37,7 @@ link = config.readline().strip()
 lat = config.readline()
 lon = config.readline()
 slackLink = config.readline().strip()
-aviationStackKey = config.readline().strip()
+apiKey = config.readline().strip()
 myCoords = (lat,lon)
 config.close()
 
@@ -92,19 +92,23 @@ while(1):
                 message = flightNum
             else:
                 # This is a flight number lets look it up
-                params = {'access_key':aviationStackKey, 'flight_icao':flightNum}
-                aviationStackResult = requests.get('http://api.aviationstack.com/v1/flights',params)
-                response = aviationStackResult.json()
-         
-                departure = "?" 
-                arrival = "?" 
-                
-                for flight in response['data']:
-                    if 'departure' in flight:
-                        departure = flight['departure']['iata']
-                        arrival = flight['arrival']['iata']
+                apiUrl = "https://aeroapi.flightaware.com/aeroapi/flights/" + flightNum
+                payload = {'max_pages': 1}
+                auth_header = {'x-apikey':apiKey}
+                data = requests.get(apiUrl, params=payload, headers=auth_header)
+                response = json.loads(data.text)
 
-                message = flightNum + " " +  departure + " " + arrival 
+                for x in range(len(response['flights'])):
+
+                    # find planes that are en route
+                    if response['flights'][x]['progress_percent'] != 0 and response['flights'][x]['progress_percent'] != 100:
+                        
+                        origin = response['flights'][x]['origin']['code']    
+                        destination = response['flights'][x]['destination']['code']
+                        aircraft = response['flights'][x]['aircraft_type']
+                        break
+
+                message = flightNum + " " + origin + " " + destination + " " + aircraft 
 
             slackTest(slackLink,message)
 
