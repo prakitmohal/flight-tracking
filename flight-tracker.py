@@ -1,4 +1,4 @@
-import os, requests, json, time, geopy.distance, sys, requests, base64, datetime, re
+import os, requests, json, time, geopy.distance, sys, base64, datetime, re
 
 # slack test
 def slackTest(link,message):
@@ -44,7 +44,10 @@ config.close()
 
 while(1):
    
-    os.system('clear')
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')
     
     # Load data into the program
     url = requests.get(link)
