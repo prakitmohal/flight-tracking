@@ -1,3 +1,0 @@
-http://100.100.100.100/dump1090-fa/data/aircraft.json
-38.8977
--77.0365
