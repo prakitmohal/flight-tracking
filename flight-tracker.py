@@ -1,119 +1,109 @@
-import os, requests, json, time, geopy.distance, sys, base64, datetime, re
+import os, requests, json, time, geopy.distance, sys, base64, datetime, re, configparser 
+from collections import namedtuple
 
-# slack test
-def slackTest(link,message):
+# notification sent
+def notify(link,message):
     
-    title = "PLANE DETECTED :airplane:"
-    slackData = {
- 
-        "username": "Testing",
-        "attachments": [
-            {
-                "color": "#FF0000",
-                "fields": [
-                    {
-                        "title": title,
-                        "value": message,
-                        "short": "false",
- 
-                    }
-                ]
-            }
-        ]
-    }
-     
-    # Size of the slack data
-    byte_length = str(sys.getsizeof(slackData))
-    headers = {'Content-Type': "application/json",
-               'Content-Length': byte_length}
-     
-    # Posting requests after dumping the slack data
-    response = requests.post(link, data=json.dumps(slackData), headers=headers)
+    payload = []
+    
+    payload = message.airline + " " + message.flightNum + "\n" + \
+              message.aircraft + "\n" + \
+              message.origin + "->" + message.destination + "\n" + \
+              "Altitude: " + str(message.altitude) + " ft"  
+    
+    print(payload)
+            
+    requests.post(link,payload)
 
  
 # read config file
-config = open("config.txt","r")
-link = config.readline().strip()
-lat = config.readline()
-lon = config.readline()
-slackLink = config.readline().strip()
-apiKey = config.readline().strip()
-myCoords = (lat,lon)
-config.close()
+config = configparser.ConfigParser()
+config.read("config.ini")
+s = config["settings"]
 
+
+feederUrl = s["feederUrl"]
+lat = float(s["lat"])
+lon = float(s["lon"])
+adsbUrl = s["adsbUrl"]
+aeroUrl = s["aeroUrl"]
+aeroKey = s["aeroKey"]
+notifyUrl = s["notifyUrl"]
+
+myCoords = (lat,lon)
+Plane = namedtuple("Plane",["flightNum","distance","altitude","aircraft"])
+Message = namedtuple("Message",["flightNum","altitude","airline","aircraft","origin","destination"])
 
 while(1):
    
-    if os.name == 'nt':
-        os.system('cls')
-    else:
-        os.system('clear')
+    # Clear Screen and Data
+    os.system('clear')
+    flightData = []
+    payload = []
     
     # Load data into the program
-    url = requests.get(link)
-    data = json.loads(url.text)
+    data = requests.get(feederUrl).json()
 
-    flightData = []
     for x in range(len(data['aircraft'])):
 
-        # create a list of flight numbers, distance from myself, and altitude
-        if 'lat' in data['aircraft'][x] and 'flight' in data['aircraft'][x] and 'alt_baro' in data['aircraft'][x]:
-        
-            flightNum = data['aircraft'][x]['flight']
-            flightNum = flightNum.strip()
+        # only add if if a latitude and altitude are available to pull
+        if 'lat' in data['aircraft'][x] and 'alt_baro' in data['aircraft'][x]:
+ 
+            # create a list of flight numbers, distance from myself, and altitude
+            flightNum = data['aircraft'][x].get('flight','').strip() or None
 
             dataCoords = (data['aircraft'][x]['lat'],data['aircraft'][x]['lon'])
             distance = round(geopy.distance.distance(myCoords,dataCoords).nm,1)
 
             altitude = data['aircraft'][x]['alt_baro']
+            aircraft = data['aircraft'][x].get('desc') or None
 
-            # only log if altitude < 15,000
-            if altitude < 15000:
-                flightData.append([flightNum,distance,altitude])
+            flightData.append(Plane(flightNum,distance,altitude,aircraft))
 
     # sort the list by distance
-    entries = len(flightData)
-    
-    if entries >= 1:
+    if len(flightData) >= 1:
         
-        flightData.sort(key = lambda x: x[1])
+        flightData.sort(key=lambda p: p.distance)
+        print(datetime.datetime.fromtimestamp(data['now']).strftime('%Y-%m-%d %I:%M:%S %p'))
 
-        print (datetime.datetime.fromtimestamp(data['now']).strftime('%Y-%m-%d %H:%M:%S'))
-
-        for x in range(entries):
-            print (flightData[x])
+        for x in range(len(flightData)):
+            print (x,flightData[x])
    
         # if a plane is within 1.5nm we can hear it
-        if flightData[0][1] < 1.5:
+        if flightData[0].distance < 1.5:
+           
+            flightNum = flightData[0].flightNum
             
-            flightNum = flightData[0][0]
-            print ("Can you hear this plane: ",flightNum)
+            print("gathering info on flight ",flightNum)
+           
+            altitude = flightData[0].altitude
+            aircraft = flightData[0].aircraft
+             
+            # hit the API to gather some more info
+            url = adsbUrl + flightNum
+            data = requests.get(url).json()
+            airline = data['response']['flightroute']['airline']['name']
+            origin = data['response']['flightroute']['origin']['iata_code']
+            destination = data['response']['flightroute']['destination']['iata_code']
 
-            # determine if the flight is a registration code or flight number to lookup
-            # if it starts with N followed by a number assume it's a reg. Thanks Spirit Airlines 
-            if re.match('^N[0-9]',flightNum):
-                message = flightNum
-            else:
-                # This is a flight number lets look it up
-                apiUrl = "https://aeroapi.flightaware.com/aeroapi/flights/" + flightNum
-                payload = {'max_pages': 1}
-                auth_header = {'x-apikey':apiKey}
-                data = requests.get(apiUrl, params=payload, headers=auth_header)
-                response = json.loads(data.text)
+            #payload = {'max_pages': 1}
+            #auth_header = {'x-apikey':aeroKey}
+            #data = requests.get(url, params=payload, headers=auth_header)
+            #response = json.loads(data.text)
+    
+            #for x in range(len(response['flights'])):
 
-                for x in range(len(response['flights'])):
-
-                    # find planes that are en route
-                    if response['flights'][x]['progress_percent'] != 0 and response['flights'][x]['progress_percent'] != 100:
+                # find planes that are en route
+            #    if response['flights'][x]['progress_percent'] != 0 and response['flights'][x]['progress_percent'] != 100:
                         
-                        origin = response['flights'][x]['origin']['code']    
-                        destination = response['flights'][x]['destination']['code']
-                        aircraft = response['flights'][x]['aircraft_type']
-                        break
+            #        airline = response['flights'][x]['operator']
+            #        origin = response['flights'][x]['origin']['code']    
+            #        destination = response['flights'][x]['destination']['code']
+            #        aircraft = response['flights'][x]['aircraft_type']
+            #        break
 
-                message = flightNum + " " + origin + " " + destination + " " + aircraft 
-
-            slackTest(slackLink,message)
+            payload.append(Message(flightNum,altitude,airline,aircraft,origin,destination))
+            notify(notifyUrl,payload[0])
 
             # mute notifications so we're not hammered with them
             time.sleep(105)
