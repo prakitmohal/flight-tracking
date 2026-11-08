@@ -4,9 +4,14 @@ from collections import namedtuple
 # notification sent
 def notify(link,message):
     
-    payload = []
+    payload = ""
+
+    print(message)
     
-    payload = message.airline + " " + message.flightNum + "\n"
+    if message.airline:
+        payload += message.airline + " " 
+
+    payload += message.flightNum + "\n"
 
     if message.aircraft:
         payload += message.aircraft + "\n"
@@ -34,9 +39,10 @@ adsbUrl = s["adsbUrl"]
 aeroUrl = s["aeroUrl"]
 aeroKey = s["aeroKey"]
 notifyUrl = s["notifyUrl"]
+secretUrl = s["secretUrl"]
 
 myCoords = (lat,lon)
-Plane = namedtuple("Plane",["flightNum","distance","altitude","aircraft"])
+Plane = namedtuple("Plane",["flightNum","distance","altitude","aircraft","airline"])
 Message = namedtuple("Message",["flightNum","altitude","airline","aircraft","origin","destination"])
 
 while(1):
@@ -62,8 +68,9 @@ while(1):
 
             altitude = data['aircraft'][x]['alt_baro']
             aircraft = data['aircraft'][x].get('desc')
+            airline = data['aircraft'][x].get('ownOp')
 
-            flightData.append(Plane(flightNum,distance,altitude,aircraft))
+            flightData.append(Plane(flightNum,distance,altitude,aircraft,airline))
 
     # sort the list by distance
     if len(flightData) >= 1:
@@ -72,41 +79,35 @@ while(1):
         
         # print a timestamp to see when it last ran
         print(datetime.datetime.fromtimestamp(data['now']).strftime('%Y-%m-%d %I:%M:%S %p\n'))
-
-        for x in range(len(flightData)):
-            print (x,flightData[x])
+        print(flightData[0])
 
         # if a plane is within 1.5nm we can hear it
         if flightData[0].distance < 1.5:
            
             flightNum = flightData[0].flightNum
            
-            flightNum = ""
             print("\nGathering info on flight",flightNum)
             print()
            
             altitude = flightData[0].altitude
             aircraft = flightData[0].aircraft
-             
+            airline = flightData[0].airline
+
             # hit the API to gather some more info. Only do it if there's a flightnumber
             if flightNum:
             
-                url = adsbUrl + flightNum
-                data = requests.get(url).json()
-           
-                print(json.dumps(data, indent=4))
-                print()
+                apiCall = {"planes": [{"callsign": flightNum}]}
+                response = requests.post(secretUrl,json=apiCall)
+                data = response.json()
 
-                airline = data['response']['flightroute'].get('airline')
-                if airline:
-                    airline = airline['name']
-            
-                origin = data['response']['flightroute']['origin']['iata_code']
-                destination = data['response']['flightroute']['destination']['iata_code']
-            else:
-                airline = ""
-                origin = ""
-                destination = ""
+                print(json.dumps(data, indent=4))
+
+                if data[0].get('_airports'):
+                    origin = data[0]['_airports'][0]['iata']
+                    destination = data[0]['_airports'][1]['iata']
+                else:
+                    origin = ""
+                    destination = ""
 
             #payload = {'max_pages': 1}
             #auth_header = {'x-apikey':aeroKey}
