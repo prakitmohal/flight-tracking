@@ -8,11 +8,13 @@ def notify(link,message):
     
     payload = message.airline + " " + message.flightNum + "\n"
 
-    if messsage.aircraft:
+    if message.aircraft:
         payload += message.aircraft + "\n"
     
-    payload+= payload + message.origin + "->" + message.destination + "\n" + \
-              "Altitude: " + str(message.altitude) + " ft"  
+    if message.origin:
+        payload+= message.origin + "->" + message.destination + "\n" 
+
+    payload += "Altitude: " + str(message.altitude) + " ft"  
     
     print(payload)
             
@@ -53,13 +55,13 @@ while(1):
         if 'lat' in data['aircraft'][x] and 'alt_baro' in data['aircraft'][x]:
  
             # create a list of flight numbers, distance from myself, and altitude
-            flightNum = data['aircraft'][x].get('flight','').strip() or None
+            flightNum = data['aircraft'][x].get('flight','').strip()
 
             dataCoords = (data['aircraft'][x]['lat'],data['aircraft'][x]['lon'])
             distance = round(geopy.distance.distance(myCoords,dataCoords).nm,1)
 
             altitude = data['aircraft'][x]['alt_baro']
-            aircraft = data['aircraft'][x].get('desc') or None
+            aircraft = data['aircraft'][x].get('desc')
 
             flightData.append(Plane(flightNum,distance,altitude,aircraft))
 
@@ -67,27 +69,44 @@ while(1):
     if len(flightData) >= 1:
         
         flightData.sort(key=lambda p: p.distance)
-        print(datetime.datetime.fromtimestamp(data['now']).strftime('%Y-%m-%d %I:%M:%S %p'))
+        
+        # print a timestamp to see when it last ran
+        print(datetime.datetime.fromtimestamp(data['now']).strftime('%Y-%m-%d %I:%M:%S %p\n'))
 
         for x in range(len(flightData)):
             print (x,flightData[x])
-   
+
         # if a plane is within 1.5nm we can hear it
         if flightData[0].distance < 1.5:
            
             flightNum = flightData[0].flightNum
-            
-            print("gathering info on flight ",flightNum)
+           
+            flightNum = ""
+            print("\nGathering info on flight",flightNum)
+            print()
            
             altitude = flightData[0].altitude
             aircraft = flightData[0].aircraft
              
-            # hit the API to gather some more info
-            url = adsbUrl + flightNum
-            data = requests.get(url).json()
-            airline = data['response']['flightroute']['airline']['name']
-            origin = data['response']['flightroute']['origin']['iata_code']
-            destination = data['response']['flightroute']['destination']['iata_code']
+            # hit the API to gather some more info. Only do it if there's a flightnumber
+            if flightNum:
+            
+                url = adsbUrl + flightNum
+                data = requests.get(url).json()
+           
+                print(json.dumps(data, indent=4))
+                print()
+
+                airline = data['response']['flightroute'].get('airline')
+                if airline:
+                    airline = airline['name']
+            
+                origin = data['response']['flightroute']['origin']['iata_code']
+                destination = data['response']['flightroute']['destination']['iata_code']
+            else:
+                airline = ""
+                origin = ""
+                destination = ""
 
             #payload = {'max_pages': 1}
             #auth_header = {'x-apikey':aeroKey}
