@@ -8,7 +8,10 @@ Right now this uses ntfy.sh to send me notifications, so I can test what will ac
 
 The assumption is that you already have adsb.im running on your raspberry pi
 
-You'll need python, geopy, and requests
+You'll need python and geopy
+- geopy: sudo apt install python3-geopy
+run it by going
+- python3 flight-tracker.py
 
 You'll also need to register for a FlightAware API Key
 https://flightaware.com/commercial/aeroapi
