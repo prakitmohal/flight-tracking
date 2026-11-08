@@ -6,9 +6,12 @@ def notify(link,message):
     
     payload = []
     
-    payload = message.airline + " " + message.flightNum + "\n" + \
-              message.aircraft + "\n" + \
-              message.origin + "->" + message.destination + "\n" + \
+    payload = message.airline + " " + message.flightNum + "\n"
+
+    if messsage.aircraft:
+        payload += message.aircraft + "\n"
+    
+    payload+= payload + message.origin + "->" + message.destination + "\n" + \
               "Altitude: " + str(message.altitude) + " ft"  
     
     print(payload)
